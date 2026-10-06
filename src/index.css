@@ -1,0 +1,187 @@
+@import "tailwindcss";
+
+@theme {
+  --color-page: #fcfcfc;
+  --color-ink: #171717;
+  --color-muted: #5c5c5c;
+  --color-subtle: #8f8f8f;
+  --color-faint: #c2c2c2;
+  --color-line: #ebebeb;
+  --color-line-soft: #f3f3f3;
+}
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: var(--color-page);
+  color: var(--color-ink);
+  /* Same UI font stack as Cursor / VS Code: the OS system font (SF Pro on macOS, Segoe UI on Windows). */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui, "Ubuntu", "Droid Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes blink { 50% { opacity: 0 } }
+.animate-blink { animation: blink 1s steps(1) infinite; }
+
+/* Attack-path line labels are clickable: lift them on hover like a button. */
+.react-flow__edge .react-flow__edge-textwrapper {
+  cursor: pointer;
+}
+.react-flow__edge .react-flow__edge-textbg {
+  transition: filter 150ms ease, stroke 150ms ease;
+}
+.react-flow__edge:hover .react-flow__edge-textbg {
+  stroke: #c9c9c9 !important;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.12)) drop-shadow(0 1px 2px rgba(0, 0, 0, 0.06));
+}
+.react-flow__edge:hover .react-flow__edge-text {
+  fill: #171717 !important;
+}
+
+/* Checkboxes: custom box with a smaller tick than the native one, and a quiet focus ring. */
+input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1px solid #cfcfcf;
+  border-radius: 4px;
+  background: #fff center / 10px 10px no-repeat;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, opacity 150ms ease;
+}
+input[type='checkbox']:hover {
+  border-color: #a3a3a3;
+}
+input[type='checkbox']:checked {
+  border-color: #171717;
+  background-color: #171717;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10' fill='none'%3E%3Cpath d='M2 5.2 4.1 7.2 8 3' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+input[type='checkbox']:indeterminate {
+  border-color: #171717;
+  background-color: #171717;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M2.5 5h5' stroke='white' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+input[type='checkbox']:focus {
+  outline: none;
+}
+input[type='checkbox']:focus-visible {
+  box-shadow: 0 0 0 3px rgba(23, 23, 23, 0.12);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+@keyframes fade-out {
+  to { opacity: 0; }
+}
+/* Detail panels slide fully in from beyond the right edge, and back out the same way. */
+@keyframes panel-in {
+  from { transform: translateX(calc(100% + 32px)); }
+}
+@keyframes panel-out {
+  to { transform: translateX(calc(100% + 32px)); }
+}
+
+/* ── Motion ─────────────────────────────────────────────── */
+
+/* Tab switch and page turns: the incoming content slides 16px in from the side you moved toward
+   (--dir: 1 = forward/right, -1 = back/left) and fades in. Short, since both happen often;
+   the outgoing content leaves instantly. */
+.tab-panel,
+.page-in {
+  animation: slide-in 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(calc(var(--dir, 1) * 16px)); }
+}
+
+/* Table rows: a quick, quiet hover tint (colour only, mouse devices only). */
+@media (hover: hover) and (pointer: fine) {
+  [role='rowgroup'] > [role='row'] {
+    transition: background-color 120ms ease;
+  }
+}
+
+/* Tab counts tick in when they change (e.g. 0 → 56 after a sync). */
+.count-tick {
+  animation: count-tick 260ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes count-tick {
+  from { opacity: 0; transform: translateY(-60%); }
+}
+
+/* Selection bar swaps in for the toolbar's left side. */
+.bulk-in {
+  animation: bulk-in 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes bulk-in {
+  from { opacity: 0; transform: translateY(3px); }
+}
+
+/* Undo toast rises in from the bottom edge. */
+.toast-in {
+  animation: toast-in 240ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+/* Centring uses the separate `translate` property, so this only moves on `transform`. */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px); }
+}
+
+/* Popovers scale from their trigger's corner. */
+.popover-in {
+  animation: popover-in 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes popover-in {
+  from { opacity: 0; transform: scale(0.96); }
+}
+
+/* Modals scale up from their centre. */
+.modal-in {
+  animation: modal-in 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.97); }
+}
+
+/* Provider logo carousel: the track moves left by one set per loop, linear, forever. */
+.logo-track {
+  animation: logo-scroll 14s linear infinite;
+}
+.logo-marquee:hover .logo-track {
+  animation-play-state: paused;
+}
+@keyframes logo-scroll {
+  to { transform: translateX(calc(var(--set) * -1)); }
+}
+
+/* Reduced motion: keep the fades that aid comprehension, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .tab-panel, .page-in, .count-tick, .bulk-in, .toast-in, .modal-in, .popover-in { animation-name: fade-in; }
+  .logo-track { animation: none; }
+}
+
+/* ── Text scale ────────────────────────────────────────────
+   One factor for the whole interface: --ui-scale = base / 14, with a 15px base. Every text size and line height keeps its ratio
+   to that base, so the sidebar, tabs, toolbar, tables and panels grow or shrink together. */
+:root { --ui-scale: calc(15 / 14); } /* base text size 15px */
+body { font-size: calc(16px * var(--ui-scale)); }
+.text-\[10px\] { font-size: calc(10px * var(--ui-scale)); }
+.text-\[11px\] { font-size: calc(11px * var(--ui-scale)); }
+.text-\[12px\], .text-xs { font-size: calc(12px * var(--ui-scale)); }
+.text-\[12\.5px\] { font-size: calc(12.5px * var(--ui-scale)); }
+.text-\[13px\] { font-size: calc(13px * var(--ui-scale)); }
+.text-sm { font-size: calc(14px * var(--ui-scale)); }
+.text-\[15px\] { font-size: calc(15px * var(--ui-scale)); }
+.text-base { font-size: calc(16px * var(--ui-scale)); }
+.text-lg, .text-\[18px\] { font-size: calc(18px * var(--ui-scale)); }
+.text-xl { font-size: calc(20px * var(--ui-scale)); }
+.text-\[28px\] { font-size: calc(28px * var(--ui-scale)); }
+.leading-8 { line-height: calc(32px * var(--ui-scale)); }
+.leading-4 { line-height: calc(16px * var(--ui-scale)); }
+.leading-5 { line-height: calc(20px * var(--ui-scale)); }
+.leading-6 { line-height: calc(24px * var(--ui-scale)); }
+.leading-7 { line-height: calc(28px * var(--ui-scale)); }
