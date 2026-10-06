@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useLayoutEffect, useRef } from 'react'
 
 /**
  * Filled fillets for structural UI lines (sidebar edge, top bar, tabs, toolbar, table
@@ -17,7 +17,11 @@ const LINE = '#ebebeb'
 /** Fillet radius in px. */
 export const FilletRadius = createContext(8)
 
-export function filletPath(cx: number, cy: number, quads: Quadrant[] = ALL, f = 3.5, h = 0.5) {
+// h is where each curve starts, measured from the line's centre. -0.5 starts it on the far edge of
+// the 1px line, so the fillet overlaps the line it meets instead of butting against it: browsers
+// snap borders to whole screen pixels but draw the curve where it falls, and at display scales
+// like 1.25× or 1.5× that left a hairline gap. Same colour, so the overlap is invisible.
+export function filletPath(cx: number, cy: number, quads: Quadrant[] = ALL, f = 3.5, h = -0.5) {
   if (f <= 0) return ''
   const p: Record<Quadrant, string> = {
     tl: `M${cx - h},${cy - h}L${cx - h},${cy - h - f}A${f},${f} 0 0 1 ${cx - h - f},${cy - h}Z`,
@@ -65,4 +69,34 @@ export function EdgeJoint({ edge, line, quads }: { edge: 'left' | 'right'; line:
       })}
     />
   )
+}
+
+/**
+ * Whole-pixel columns for tile grids that sit on the line colour with 1px gaps. `fr` columns
+ * land on fractional pixels, which smears each 1px gap into two faint half-lines that the
+ * fillets no longer meet. This sizes each column in whole pixels (weights like [3, 2] act as
+ * 3fr 2fr), handing the leftover pixels to the first columns. Attach the ref to a `grid`.
+ */
+export function usePixelColumns<T extends HTMLElement>(weights: number[]) {
+  const ref = useRef<T>(null)
+  const key = weights.join(',')
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const w = key.split(',').map(Number)
+    const fit = () => {
+      const gap = parseFloat(getComputedStyle(el).columnGap) || 0
+      const free = Math.floor(el.clientWidth - gap * (w.length - 1))
+      const total = w.reduce((a, b) => a + b, 0)
+      const cols = w.map((x) => Math.floor((free * x) / total))
+      let rest = free - cols.reduce((a, b) => a + b, 0)
+      for (let i = 0; rest > 0; i = (i + 1) % cols.length, rest--) cols[i]++
+      el.style.gridTemplateColumns = cols.map((c) => `${c}px`).join(' ')
+    }
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [key])
+  return ref
 }

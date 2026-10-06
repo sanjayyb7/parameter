@@ -1,3 +1,5 @@
+import { DialRoot } from 'dialkit'
+import 'dialkit/styles.css'
 import { useCallback, useMemo, useState } from 'react'
 import { AttackPathsTab } from './components/AttackPathsTab'
 import { AccountFilter } from './components/AccountFilter'
@@ -22,6 +24,8 @@ const TAB_ICONS: Record<TabId, Crumb['Icon']> = {
   exposure: Globe,
   'attack-paths': GitBranch,
 }
+
+const SHOW_DIALKIT = false
 
 const TAB_ORDER: TabId[] = ['connections', 'resources', 'exposure', 'attack-paths']
 
@@ -146,6 +150,9 @@ export default function App() {
             setModalOpen(true)
           }}
         />
+        {/* Live tuning: findings chart styling + motion */}
+        {/* Hidden for now; set SHOW_DIALKIT to true to bring the tuning panel back. */}
+        {SHOW_DIALKIT && <DialRoot position="bottom-left" theme="light" defaultOpen={false} />}
         <ConnectModal
           open={modalOpen}
           onClose={() => setModalOpen(false)}

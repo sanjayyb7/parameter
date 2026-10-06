@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowRight, Ban, CheckCircle2, Circle, CloudAlert, Database, GitBranch, Globe, Network, Plus, ShieldCheck } from 'lucide-react'
-import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { EdgeJoint, FilletRadius } from './Fillet'
+import { useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useDialKit, type DialConfig } from 'dialkit'
+import { EdgeJoint, FilletRadius, usePixelColumns } from './Fillet'
 
 /* ─────────────────────────────────────────────────────────
  * OVERVIEW
@@ -71,38 +72,38 @@ const KPIS: {
   },
 ]
 
-/** Findings per day, Sep 6 → Oct 5 2026: [critical + high, medium + low + info]. */
-const DAILY: [number, number][] = [
-  [0, 0],
-  [0, 0],
-  [0, 0],
-  [0, 0],
-  [180, 90],
-  [0, 12],
-  [20, 0],
-  [15, 0],
-  [0, 10],
-  [165, 135],
-  [60, 60],
-  [20, 30],
-  [0, 8],
-  [0, 6],
-  [12, 0],
-  [18, 0],
-  [0, 9],
-  [0, 7],
-  [14, 0],
-  [16, 0],
-  [12, 0],
-  [10, 0],
-  [0, 11],
-  [25, 0],
-  [20, 40],
-  [15, 0],
-  [0, 8],
-  [12, 0],
-  [18, 0],
-  [0, 10],
+/** Findings per day, Sep 6 → Oct 5 2026: [critical, medium, low]. */
+const DAILY: [number, number, number][] = [
+  [15, 23, 24],
+  [4, 10, 30],
+  [13, 13, 12],
+  [7, 13, 36],
+  [81, 99, 90],
+  [0, 0, 12],
+  [6, 14, 0],
+  [8, 7, 0],
+  [0, 0, 10],
+  [74, 91, 135],
+  [24, 36, 60],
+  [6, 14, 30],
+  [0, 0, 8],
+  [0, 0, 6],
+  [5, 7, 0],
+  [7, 11, 0],
+  [0, 0, 9],
+  [0, 0, 7],
+  [5, 9, 0],
+  [7, 9, 0],
+  [5, 7, 0],
+  [3, 7, 0],
+  [0, 0, 11],
+  [9, 16, 0],
+  [9, 11, 40],
+  [6, 9, 0],
+  [0, 0, 8],
+  [6, 6, 0],
+  [6, 12, 0],
+  [0, 0, 10],
 ]
 const DAY0 = new Date(2026, 8, 6)
 
@@ -189,25 +190,29 @@ function SeverityBars({ level }: { level: 1 | 2 | 3 }) {
 /* ───────────── charts ───────────── */
 
 /* Block-column chart on a crisp hairline grid (square cells, sharp corners, like the
- * empty-state pattern): each day is a stack of cells (one cell = 30 findings); ink cells are Critical + High, grey cells Medium · Low · Info. Hovering a column
+ * empty-state pattern): each day is a stack of cells (one cell = 30 findings); stacked Critical, Medium, then Low from the baseline up. Hovering a column
  * draws a dashed guide and a tooltip with the day's counts. */
 const CELL = 30
 const ROWS = 11
-/** Chart styling. Colours are blended over the page colour. */
-const CHART = {
-  gridOpacity: 0.08, // darkness of the inner grid lines (0.25 ≈ the empty-state grid); the frame stays fixed
-  highOpacity: 0.86, // Critical + High cells
-  lowOpacity: 0.92, // Medium · Low · Info cells
-  cellGap: 0.75, // px of line between cells (0 = solid bars, no cuts)
-  guideWidth: 0.25, // px, dashed hover guide
-  guideOpacity: 0.95, // dashed hover guide
-  density: 3, // squares per side of each box: 2 splits every box into 4 smaller squares, 3 into 9
-  criticalRed: '#dc2626', // Critical + High: strong red
-  lighterRed: '#f4a7a7', // Medium · Low · Info: lighter shade of the same red (lower level)
-  tipWidth: 224, // tooltip card width (px)
-  tipPadding: 6, // tooltip card inner padding (px)
-  tipText: 13, // tooltip text size (px, before the global text scale)
-}
+/** Chart styling (DialKit "Findings chart"). Colours are blended over the page colour. */
+const CHART_CONFIG = {
+  replay: { type: 'action', label: '↻ Replay animation' },
+  lineOpacity: [0.01, 0, 0.2, 0.005], // darkness of the grid lines and the cuts between squares (one colour for both)
+  frameOpacity: [0.1, 0, 0.4, 0.01], // left axis and baseline
+  lineWeight: [0.5, 0, 4, 0.25], // grid line weight in px (cuts between squares too); snapped to whole screen pixels so every line matches, 0.5 = hairline on retina
+  density: [3, 1, 4, 1], // squares per side of each box: 2 splits every box into 4, 3 into 9
+  criticalTone: { type: 'color', default: '#b91c1c' }, // Critical: deepest red
+  criticalOpacity: [0.85, 0, 1, 0.01],
+  mediumTone: { type: 'color', default: '#ef5f5f' }, // Medium: mid red
+  mediumOpacity: [0.85, 0, 1, 0.01],
+  lowTone: { type: 'color', default: '#f4a7a7' }, // Low: light red
+  lowOpacity: [0.92, 0, 1, 0.01],
+  guideWidth: [0.2, 0, 2, 0.05], // px, dashed hover guide
+  guideOpacity: [0.95, 0, 1, 0.01],
+  tipWidth: [224, 160, 320, 1], // tooltip card width (px)
+  tipPadding: [6, 0, 16, 1], // tooltip card inner padding (px)
+  tipText: [13, 11, 16, 0.5], // tooltip text size (px, before the global text scale)
+} satisfies DialConfig
 const PAGE = '#fcfcfc'
 // A colour at an opacity, flattened over the page colour so grid lines never show through.
 const over = (rgb: string, a: number) => `linear-gradient(rgba(${rgb}, ${a}), rgba(${rgb}, ${a})), ${PAGE}`
@@ -218,101 +223,230 @@ const rgbOf = (hex: string) => {
 }
 const dayOf = (i: number) => new Date(DAY0.getFullYear(), DAY0.getMonth(), DAY0.getDate() + i)
 
+/* ─────────────────────────────────────────────────────────
+ * CHART MOTION (DialKit "Chart motion")
+ *
+ *   fall     cells drop into place from above, bottom rows first,
+ *            in a wave across the days (bounce on landing)
+ *   rise     each bar grows up from the baseline, row by row
+ *   colour   bars appear grey, then the red washes in day by day
+ *   none     static
+ *
+ *   delay = day × columnStagger + rowFromBottom × rowStagger
+ *   Plays on mount; replays when a dial changes or ↻ is pressed.
+ * ───────────────────────────────────────────────────────── */
+const MOTION_CONFIG = {
+  replay: { type: 'action', label: '↻ Replay animation' },
+  style: { type: 'select', options: ['fall', 'rise', 'colour', 'none'], default: 'rise' },
+  duration: [520, 150, 2000, 10], // ms per cell
+  columnStagger: [26, 0, 120, 1], // ms between days
+  rowStagger: [22, 0, 80, 1], // ms between rows (of the original 11), bottom first
+  bounce: [0.35, 0, 1, 0.05], // fall only: overshoot on landing
+} satisfies DialConfig
+
+type RGB = [number, number, number]
+const PAGE_RGB: RGB = [252, 252, 252]
+const rgbArr = (hex: string) => rgbOf(hex).split(', ').map(Number) as RGB
+/** `rgb` at opacity `a`, flattened over `base`. */
+const mix = (rgb: RGB, a: number, base: RGB = PAGE_RGB): RGB => rgb.map((v, i) => v * a + base[i] * (1 - a)) as RGB
+const css = (c: RGB) => `rgb(${c.map(Math.round).join(', ')})`
+/** CSS cubic-bezier(x1, y1, x2, y2) as a function of progress. */
+const bezier = (x1: number, y1: number, x2: number, y2: number) => (x: number) => {
+  const at = (a: number, b: number, t: number) => 3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3
+  let lo = 0
+  let hi = 1
+  for (let n = 0; n < 24; n++) {
+    const mid = (lo + hi) / 2
+    if (at(x1, x2, mid) < x) lo = mid
+    else hi = mid
+  }
+  return at(y1, y2, (lo + hi) / 2)
+}
+const EASE_RISE = bezier(0.23, 1, 0.32, 1)
+const EASE_COLOUR = bezier(0.25, 0.1, 0.25, 1)
+
+/* The grid is painted on a canvas in real device pixels: one solid sheet of line colour with
+ * the squares painted into it. Every line is the same whole number of device pixels, so
+ * horizontal and vertical cuts are identical at any zoom or screen density. */
 function OverTimeChart() {
   const [hover, setHover] = useState<number | null>(null)
-  const chart = CHART
-  const HIGH = over(rgbOf(chart.criticalRed), chart.highOpacity)
-  const LOW = over(rgbOf(chart.lighterRed), chart.lowOpacity)
-  const LINE = over('0, 0, 0', chart.gridOpacity * 0.25)
+  // Bump to replay: on any motion change, or from Replay in the Chart motion panel.
+  const [run, setRun] = useState(0)
+  const chart = useDialKit('Findings chart', CHART_CONFIG, { id: 'findings-chart-grid', persist: true, onAction: (a) => a === 'replay' && setRun((r) => r + 1) })
+  const motion = useDialKit('Chart motion', MOTION_CONFIG, { id: 'chart-motion', persist: true, onAction: (a) => a === 'replay' && setRun((r) => r + 1) })
+  useEffect(() => setRun((r) => r + 1), [motion.style, motion.duration, motion.columnStagger, motion.rowStagger, motion.bounce])
+  const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const anim = reduce || motion.style === 'none' ? null : motion.style
+  // Stacked bottom-up in this order, most severe at the base.
+  const SERIES = [
+    { label: 'Critical', tone: chart.criticalTone, opacity: chart.criticalOpacity },
+    { label: 'Medium', tone: chart.mediumTone, opacity: chart.mediumOpacity },
+    { label: 'Low', tone: chart.lowTone, opacity: chart.lowOpacity },
+  ].map((x) => ({ ...x, swatch: over(rgbOf(x.tone), x.opacity), rgb: mix(rgbArr(x.tone), x.opacity) }))
   const cols = DAILY.length
-  // The grid's height follows its width (square cells); the y-axis labels track it.
-  const gridRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const el = gridRef.current
+  const d = chart.density
+  const across = cols * d
+  const rows = ROWS * d
+
+  // Layout in device pixels: square size s, line width g, frame width f.
+  const boxRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [geo, setGeo] = useState({ dpr: 1, s: 0, g: 1, f: 1 })
+  useLayoutEffect(() => {
+    const el = boxRef.current
     if (!el) return
-    const ro = new ResizeObserver(() => el.parentElement?.style.setProperty('--grid-h', `${el.offsetHeight}px`))
+    const measure = () => {
+      const dpr = window.devicePixelRatio || 1
+      const g = chart.lineWeight > 0 ? Math.max(1, Math.round(chart.lineWeight * dpr)) : 0
+      const f = Math.max(1, Math.round(dpr))
+      const avail = Math.floor((el.clientWidth - 36) * dpr)
+      const s = Math.max(1, Math.floor((avail - f - (across - 1) * g) / across))
+      setGeo((p) => (p.dpr === dpr && p.s === s && p.g === g && p.f === f ? p : { dpr, s, g, f }))
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [])
+  }, [across, chart.lineWeight])
+  const { dpr, s, g, f } = geo
+  const W = f + across * s + (across - 1) * g
+  const H = rows * s + (rows - 1) * g + f
+  const dayStride = d * (s + g) // device px from one day to the next
+
+  // Filled squares per day: one square holds CELL / d² findings; they fill bottom-up, row by row.
+  // fills[i] is the running square count per series, e.g. [3, 7, 12]: squares < 3 are Critical, < 7 Medium, < 12 Low.
+  const fills = DAILY.map((day) => {
+    const unit = CELL / (d * d)
+    const count = (v: number) => (v > 0 ? Math.max(1, Math.round(v / unit)) : 0)
+    const total = rows * d
+    let sum = 0
+    return day.map((v) => (sum = Math.min(total, sum + count(v))))
+  })
+
+  // Paint (and animate) the canvas. Restarts the motion only when `run` changes.
+  const startRef = useRef({ run: -1, t0: 0 })
+  useEffect(() => {
+    const cv = canvasRef.current
+    const ctx = cv?.getContext('2d')
+    if (!cv || !ctx || !s) return
+    if (startRef.current.run !== run) startRef.current = { run, t0: performance.now() }
+    const t0 = startRef.current.t0
+    const line = css(mix([0, 0, 0], chart.lineOpacity))
+    const frame = css(mix([0, 0, 0], chart.frameOpacity))
+    const grey = (c: RGB): RGB => {
+      const y = Math.min(255, (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) * 1.18)
+      return [y, y, y]
+    }
+    const fall = bezier(0.34, 1 + motion.bounce, 0.64, 1)
+    const dur = motion.duration
+    const lastDelay = (cols - 1) * motion.columnStagger + (rows / d) * motion.rowStagger
+    let raf = 0
+    const paint = (now: number) => {
+      const t = now - t0
+      ctx.fillStyle = line
+      ctx.fillRect(0, 0, W, H)
+      ctx.fillStyle = frame
+      ctx.fillRect(0, 0, f, H)
+      ctx.fillRect(0, H - f, W, f)
+      ctx.fillStyle = css(PAGE_RGB)
+      for (let c = 0; c < across; c++) for (let r = 0; r < rows; r++) ctx.fillRect(f + c * (s + g), r * (s + g), s, s)
+      for (let i = 0; i < cols; i++) {
+        const ends = fills[i]
+        const dim = hover !== null && hover !== i ? 0.55 : 1
+        for (let k = 0; k < ends[ends.length - 1]; k++) {
+          const fromBottom = Math.floor(k / d)
+          const x = f + (i * d + (k % d)) * (s + g)
+          const y = (rows - 1 - fromBottom) * (s + g)
+          const base = SERIES[ends.findIndex((e) => k < e)].rgb
+          const p = anim ? Math.min(1, Math.max(0, (t - (i * motion.columnStagger + (fromBottom / d) * motion.rowStagger)) / dur)) : 1
+          if (p <= 0 && anim !== 'colour') continue
+          let colour = base
+          let alpha = dim
+          let top = y
+          let size = s
+          if (anim === 'rise') {
+            const e = EASE_RISE(p)
+            alpha *= e
+            size = Math.round(s * e)
+            top = y + s - size
+          } else if (anim === 'fall') {
+            alpha *= Math.min(1, p / 0.4)
+            top = y - Math.round(180 * dpr * (1 - fall(p)))
+          } else if (anim === 'colour') {
+            const e = EASE_COLOUR(p)
+            const gr = grey(base)
+            colour = gr.map((v, n) => v + (base[n] - v) * e) as RGB
+          }
+          if (size <= 0 || alpha <= 0) continue
+          ctx.globalAlpha = alpha
+          ctx.fillStyle = css(colour)
+          ctx.fillRect(x, top, s, size)
+          ctx.globalAlpha = 1
+        }
+      }
+      if (anim && t < lastDelay + dur) raf = requestAnimationFrame(paint)
+    }
+    raf = requestAnimationFrame(paint)
+    return () => cancelAnimationFrame(raf)
+  })
+
+  const onMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const x = (e.clientX - e.currentTarget.getBoundingClientRect().left) * dpr - f
+    const i = Math.floor(x / dayStride)
+    setHover(x >= 0 && i < cols ? i : null)
+  }
+  const cssPx = (v: number) => v / dpr
   return (
-    <div>
-      <div className="mb-3 flex items-center justify-end gap-4 text-xs leading-4 text-muted">
-        <span className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-[2px]" style={{ background: HIGH }} />
-          Critical + High
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-[2px]" style={{ background: LOW }} />
-          Medium · Low · Info
-        </span>
+    <div ref={boxRef}>
+      {/* Legend: right edge lines up with the grid's right edge */}
+      <div className="mb-3 ml-9 flex items-center justify-end gap-4 text-xs leading-4 text-muted" style={{ width: cssPx(W) }}>
+        {SERIES.map((x) => (
+          <span key={x.label} className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-[2px]" style={{ background: x.swatch }} />
+            {x.label}
+          </span>
+        ))}
       </div>
-      <div className="relative ml-9 min-w-0" onMouseLeave={() => setHover(null)}>
+      <div className="relative ml-9" style={{ width: cssPx(W) }} onMouseLeave={() => setHover(null)}>
         {/* y axis, outside the grid's left edge */}
         <div
           aria-hidden
           className="pointer-events-none absolute top-0 -left-9 flex w-7 flex-col justify-between text-right font-mono text-[11px] leading-4 text-subtle"
-          style={{ aspectRatio: 'auto', height: 'var(--grid-h)' }}
+          style={{ height: cssPx(H) }}
         >
           <span className="-mt-2">{CELL * ROWS}</span>
           <span>{(CELL * ROWS * 2) / 3}</span>
           <span>{(CELL * ROWS) / 3}</span>
           <span className="-mb-2">0</span>
         </div>
-        {/* Crisp hairline grid, like the empty-state pattern: square cells, 1px lines, sharp corners */}
-        <div
-          ref={gridRef}
-          // Axis lines (left edge and baseline) are fixed; only the inner lines follow the opacity dial. No top/right frame.
-          className="grid border-b border-l border-[#e2e2e2]"
-          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, aspectRatio: `${cols} / ${ROWS}`, background: LINE, gap: chart.cellGap }}
-        >
-          {DAILY.map(([hi, lo], i) => {
-            // Each day is a d×d subdivided column: d small squares across, ROWS·d tall. A small
-            // square holds CELL / d² findings and they fill bottom-up, row by row.
-            const d = chart.density
-            const unit = CELL / (d * d)
-            const count = (v: number) => (v > 0 ? Math.max(1, Math.round(v / unit)) : 0)
-            const total = ROWS * d * d
-            const h = Math.min(count(hi), total)
-            const l = Math.min(count(lo), total - h)
-            const rows = ROWS * d
-            return (
-              <div
-                key={i}
-                className="relative grid"
-                style={{ gap: chart.cellGap, gridTemplateColumns: `repeat(${d}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}
-                onMouseEnter={() => setHover(i)}
-              >
-                {Array.from({ length: rows * d }).map((_, n) => {
-                  const fromBottom = rows - 1 - Math.floor(n / d)
-                  const k = fromBottom * d + (n % d)
-                  const filled = k < h + l
-                  return (
-                    <span
-                      key={n}
-                      className="min-h-0 transition-opacity duration-150"
-                      style={{
-                        background: k < h ? HIGH : filled ? LOW : PAGE,
-                        opacity: hover !== null && hover !== i && filled ? 0.55 : 1,
-                      }}
-                    />
-                  )
-                })}
-                {hover === i && (
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute inset-y-[-6px] left-1/2 border-dashed"
-                    style={{ borderLeftWidth: chart.guideWidth, borderColor: `rgba(143, 143, 143, ${chart.guideOpacity})` }}
-                  />
-                )}
-              </div>
-            )
-          })}
+        <div className="relative">
+          <canvas
+            ref={canvasRef}
+            width={W}
+            height={H}
+            onMouseMove={onMove}
+            className="block [image-rendering:pixelated]"
+            style={{ width: cssPx(W), height: cssPx(H) }}
+            role="img"
+            aria-label="Findings per day over the last 30 days"
+          />
+          {hover !== null && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-[-6px] border-dashed"
+              style={{
+                left: cssPx(f + hover * dayStride + (d * s + (d - 1) * g) / 2),
+                borderLeftWidth: chart.guideWidth,
+                borderColor: `rgba(143, 143, 143, ${chart.guideOpacity})`,
+              }}
+            />
+          )}
         </div>
 
         {/* x axis: every 6th day labelled, dots between */}
         <div
           className="mt-2 grid font-mono text-[11px] leading-4 text-subtle"
-          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: chart.cellGap }}
+          style={{ gridTemplateColumns: `repeat(${cols}, ${cssPx(d * s + (d - 1) * g)}px)`, columnGap: cssPx(g), paddingLeft: cssPx(f) }}
         >
           {DAILY.map((_, i) => (
             <span key={i} className={`flex whitespace-nowrap ${i === 0 ? 'justify-start' : i === cols - 1 ? 'justify-end' : 'justify-center'}`}>
@@ -335,12 +469,7 @@ function OverTimeChart() {
             <div className="rounded-lg bg-[#f4f4f4] px-2.5 py-1.5 leading-[1.5] text-muted">
               {dayOf(hover).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </div>
-            {(
-              [
-                ['Critical + High', DAILY[hover][0], HIGH],
-                ['Medium · Low · Info', DAILY[hover][1], LOW],
-              ] as const
-            ).map(([label, v, c]) => (
+            {SERIES.map(({ label, swatch: c }, n) => [label, DAILY[hover][n], c] as const).map(([label, v, c]) => (
               <div key={label} className="flex items-center gap-2 px-2.5 py-1.5 leading-[1.5]">
                 <span className="size-2.5 rounded-[2px]" style={{ background: c }} />
                 <span className="flex-1 whitespace-nowrap text-muted">{label}</span>
@@ -357,6 +486,8 @@ function OverTimeChart() {
 /* ───────────── page ───────────── */
 
 export function OverviewPage() {
+  const kpiCols = usePixelColumns<HTMLDivElement>([1, 1, 1, 1])
+  const chartCols = usePixelColumns<HTMLDivElement>([3, 2])
   return (
     <section className="flex min-h-0 flex-1 flex-col" aria-label="Overview">
       {/* Header band */}
@@ -381,7 +512,7 @@ export function OverviewPage() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex flex-col gap-px bg-line pb-px">
           {/* Row 1: KPIs */}
-          <div className="grid grid-cols-4 gap-px">
+          <div ref={kpiCols} className="grid grid-cols-4 gap-px">
             {KPIS.map((k) => (
               <Tile key={k.label} className="px-8 py-5">
                 <div className="flex items-center gap-2 text-[13px] leading-5 whitespace-nowrap text-muted">
@@ -408,7 +539,7 @@ export function OverviewPage() {
           </div>
 
           {/* Row 2: charts and targets */}
-          <div className="grid grid-cols-[3fr_2fr] gap-px">
+          <div ref={chartCols} className="grid grid-cols-[3fr_2fr] gap-px">
             <Tile>
               <PanelHeader title="Findings over time" action={false} />
               <div className="px-8 py-6">

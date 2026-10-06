@@ -58,23 +58,23 @@ export const ATTACK_PATHS: AttackPath[] = [
   {
     id: 'p1',
     entry: 'lab-frontend',
-    target: 'Lab backend (holds the crown jewel)',
+    target: 'Payments API',
     severity: 'Critical',
     tags: ['Gains a new identity'],
     summary: SUMMARY,
     why: WHY,
     steps: [
       { verb: 'Internet reachable', subject: 'lab-frontend', detail: STEP_ENTRY },
-      { verb: 'runs as', subject: 'Lab frontend (runs the public service)', detail: STEP_RUNS_AS },
-      { verb: 'can impersonate', subject: 'Lab backend (holds the crown jewel)', detail: STEP_IMPERSONATE },
+      { verb: 'runs as', subject: 'Web frontend', detail: STEP_RUNS_AS },
+      { verb: 'can impersonate', subject: 'Payments API', detail: STEP_IMPERSONATE },
     ],
     fix: {
-      text: 'Remove roles/iam.serviceAccountTokenCreator from lab-frontend@hex-exposure-lab.iam.gserviceaccount.com on this resource. The binding is attached to the resource itself, so it is removed with that resource’s own set-iam-policy command.',
+      text: 'Remove roles/iam.serviceAccountTokenCreator from web-frontend@hex-exposure-lab.iam.gserviceaccount.com on this resource. The binding is attached to the resource itself, so it is removed with that resource’s own set-iam-policy command.',
     },
     nodes: [
       { id: 'n-lab-frontend', kind: 'entry', label: 'lab-frontend' },
-      { id: 'n-sa-lab-frontend', kind: 'identity', label: 'Lab frontend (runs the public service)' },
-      { id: 'n-sa-lab-backend', kind: 'target', label: 'Lab backend (holds the crown jewel)' },
+      { id: 'n-sa-lab-frontend', kind: 'identity', label: 'Web frontend' },
+      { id: 'n-sa-lab-backend', kind: 'target', label: 'Payments API' },
     ],
     edges: [
       { id: 'e1a', kind: 'runs-as', source: 'n-lab-frontend', target: 'n-sa-lab-frontend' },
@@ -84,25 +84,25 @@ export const ATTACK_PATHS: AttackPath[] = [
   {
     id: 'p2',
     entry: 'gcpgoat-entry',
-    target: 'Thunder a4error VM identity (the prize)',
+    target: 'Billing worker',
     severity: 'Critical',
     tags: ['Gains a new identity', 'reaches 4'],
     summary: SUMMARY,
     why: WHY,
     steps: [
       { verb: 'Internet reachable', subject: 'gcpgoat-entry', detail: STEP_ENTRY },
-      { verb: 'runs as', subject: 'GCP-GOAT sc6 attacker (project-wide tokenCreator)', detail: STEP_RUNS_AS },
-      { verb: 'can impersonate', subject: 'Thunder a4error VM identity (the prize)', detail: STEP_IMPERSONATE },
+      { verb: 'runs as', subject: 'CI deploy bot', detail: STEP_RUNS_AS },
+      { verb: 'can impersonate', subject: 'Billing worker', detail: STEP_IMPERSONATE },
     ],
     fix: {
       text: 'Bound at the project, so it applies to every resource of this type in it. Removing it revokes access to all 4 resources at once.',
       command:
-        'gcloud projects remove-iam-policy-binding hex-exposure-lab \\\n  --member="serviceAccount:gcpgoat-attacker@hex-exposure-lab.iam.gserviceaccount.com" \\\n  --role="roles/iam.serviceAccountTokenCreator"',
+        'gcloud projects remove-iam-policy-binding hex-exposure-lab \\\n  --member="serviceAccount:ci-deploy@hex-exposure-lab.iam.gserviceaccount.com" \\\n  --role="roles/iam.serviceAccountTokenCreator"',
     },
     nodes: [
       { id: 'n-gcpgoat-entry', kind: 'entry', label: 'gcpgoat-entry' },
-      { id: 'n-sa-gcpgoat', kind: 'identity', label: 'GCP-GOAT sc6 attacker (project-wide tokenCreator)' },
-      { id: 'n-sa-thunder', kind: 'target', label: 'Thunder a4error VM identity (the prize)', reached: 4 },
+      { id: 'n-sa-gcpgoat', kind: 'identity', label: 'CI deploy bot' },
+      { id: 'n-sa-thunder', kind: 'target', label: 'Billing worker', reached: 4 },
     ],
     edges: [
       { id: 'e2a', kind: 'runs-as', source: 'n-gcpgoat-entry', target: 'n-sa-gcpgoat' },

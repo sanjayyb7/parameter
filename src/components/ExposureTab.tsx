@@ -1,7 +1,7 @@
 import { ArrowRight, ArrowUpRight, Check, CheckCircle2, ChevronDown, ExternalLink, Globe, KeyRound, RotateCcw, ShieldCheck, Trash2, X } from 'lucide-react'
 import { FaSlack } from 'react-icons/fa'
 import { SlackComposer, type SentRecord } from './SlackShare'
-import { FilletRadius } from './Fillet'
+import { FilletRadius, usePixelColumns } from './Fillet'
 import { InfoButton, TAB_INFO } from './InfoButton'
 import { Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { IDENTITY_PATHS, type IdentityPath } from '../data/escalation'
@@ -208,8 +208,9 @@ interface Props {
  */
 function EnvironmentStrip({ connections, all, scope }: { connections: Connection[]; all: Resource[]; scope: Set<string> }) {
   const r = useContext(FilletRadius)
+  const cols = usePixelColumns<HTMLDivElement>(connections.map(() => 1))
   return (
-    <div className="flex shrink-0 gap-px bg-line pb-px">
+    <div ref={cols} className="grid shrink-0 gap-px bg-line pb-px" style={{ gridTemplateColumns: `repeat(${connections.length}, minmax(0, 1fr))` }}>
       {connections.map((c, i) => {
         const mine = all.filter((x) => x.connectionId === c.id)
         const reachable = mine.filter((x) => x.exposure === 'internet').length

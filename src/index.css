@@ -158,6 +158,35 @@ input[type='checkbox']:focus-visible {
   to { transform: translateX(calc(var(--set) * -1)); }
 }
 
+/* Findings chart load motion. fill-mode `backwards` holds the start state during the delay
+   but releases afterwards, so hover dimming (inline opacity) keeps working. */
+.cell-fall {
+  animation-name: cell-fall;
+  animation-timing-function: cubic-bezier(0.34, var(--bounce, 1.35), 0.64, 1);
+  animation-fill-mode: backwards;
+}
+@keyframes cell-fall {
+  from { transform: translateY(-180px); opacity: 0; }
+  40% { opacity: 1; }
+}
+.cell-rise {
+  transform-origin: bottom;
+  animation-name: cell-rise;
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  animation-fill-mode: backwards;
+}
+@keyframes cell-rise {
+  from { transform: scaleY(0); opacity: 0; }
+}
+.cell-colour {
+  animation-name: cell-colour;
+  animation-timing-function: ease;
+  animation-fill-mode: backwards;
+}
+@keyframes cell-colour {
+  from { filter: grayscale(1) brightness(1.18); }
+}
+
 /* Reduced motion: keep the fades that aid comprehension, drop the movement. */
 @media (prefers-reduced-motion: reduce) {
   .tab-panel, .page-in, .count-tick, .bulk-in, .toast-in, .modal-in, .popover-in { animation-name: fade-in; }
@@ -180,8 +209,27 @@ body { font-size: calc(16px * var(--ui-scale)); }
 .text-lg, .text-\[18px\] { font-size: calc(18px * var(--ui-scale)); }
 .text-xl { font-size: calc(20px * var(--ui-scale)); }
 .text-\[28px\] { font-size: calc(28px * var(--ui-scale)); }
-.leading-8 { line-height: calc(32px * var(--ui-scale)); }
-.leading-4 { line-height: calc(16px * var(--ui-scale)); }
-.leading-5 { line-height: calc(20px * var(--ui-scale)); }
-.leading-6 { line-height: calc(24px * var(--ui-scale)); }
-.leading-7 { line-height: calc(28px * var(--ui-scale)); }
+.leading-8 { line-height: round(calc(32px * var(--ui-scale)), 1px); }
+.leading-4 { line-height: round(calc(16px * var(--ui-scale)), 1px); }
+.leading-5 { line-height: round(calc(20px * var(--ui-scale)), 1px); }
+.leading-6 { line-height: round(calc(24px * var(--ui-scale)), 1px); }
+.leading-7 { line-height: round(calc(28px * var(--ui-scale)), 1px); }
+
+/* Whole-pixel line heights. Scaled text would otherwise give rows fractional heights (e.g. 51.42px),
+   pushing every 1px rule below onto half pixels where it blurs and the corner fillets miss it. */
+:root {
+  --text-xs--line-height: round(calc(16px * var(--ui-scale)), 1px);
+  --text-sm--line-height: round(calc(20px * var(--ui-scale)), 1px);
+  --text-base--line-height: round(calc(24px * var(--ui-scale)), 1px);
+  --text-lg--line-height: round(calc(28px * var(--ui-scale)), 1px);
+  --text-xl--line-height: round(calc(28px * var(--ui-scale)), 1px);
+}
+body { line-height: round(calc(24px * var(--ui-scale)), 1px); }
+.text-\[10px\]:not([class*='leading-']) { line-height: round(calc(15px * var(--ui-scale)), 1px); }
+.text-\[11px\]:not([class*='leading-']) { line-height: round(calc(16.5px * var(--ui-scale)), 1px); }
+.text-\[12px\]:not([class*='leading-']) { line-height: round(calc(18px * var(--ui-scale)), 1px); }
+.text-\[12\.5px\]:not([class*='leading-']) { line-height: round(calc(18.75px * var(--ui-scale)), 1px); }
+.text-\[13px\]:not([class*='leading-']) { line-height: round(calc(19.5px * var(--ui-scale)), 1px); }
+.text-\[15px\]:not([class*='leading-']) { line-height: round(calc(22.5px * var(--ui-scale)), 1px); }
+.text-\[18px\]:not([class*='leading-']) { line-height: round(calc(27px * var(--ui-scale)), 1px); }
+.text-\[28px\]:not([class*='leading-']) { line-height: round(calc(42px * var(--ui-scale)), 1px); }

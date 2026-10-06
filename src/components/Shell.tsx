@@ -1,3 +1,4 @@
+import { useDialKit, type DialConfig } from 'dialkit'
 import {
   Aperture,
   BookOpen,
@@ -101,12 +102,26 @@ export interface Crumb {
 }
 
 /** Breadcrumb: icon + label per level, chevron separators, current page in ink. */
+/** Live tuning (DialKit "Top bar"): switch each top-bar item on or off. */
+const TOPBAR_CONFIG = {
+  breadcrumb: true,
+  search: true,
+  shortcut: true, // the ⌘K hint next to Search
+  theme: false, // sun icon
+  settings: false, // gear icon
+  avatar: false,
+  name: false,
+  menuChevron: false,
+} satisfies DialConfig
+
 export function Topbar({ trail }: { trail: Crumb[] }) {
+  const show = useDialKit('Top bar', TOPBAR_CONFIG, { id: 'top-bar', persist: true })
+  const user = show.avatar || show.name || show.menuChevron
   return (
     <header className="relative flex h-14 shrink-0 items-center justify-between border-b border-line px-8">
       {/* Sidebar edge × top bar rule (continues into the sidebar's brand row) */}
       <EdgeJoint edge="left" line="bottom" quads={['tl', 'tr', 'bl', 'br']} />
-      <nav aria-label="Breadcrumb">
+      <nav aria-label="Breadcrumb" className={show.breadcrumb ? '' : 'invisible'}>
         <ol className="flex items-center gap-2.5 text-sm leading-5">
           {trail.map(({ label, Icon }, i) => {
             const current = i === trail.length - 1
@@ -126,18 +141,22 @@ export function Topbar({ trail }: { trail: Crumb[] }) {
         </ol>
       </nav>
       <div className="flex items-center gap-4">
-        <button className="flex items-center gap-2 text-sm text-muted hover:text-ink">
-          <Search className="size-4" />
-          Search
-          <kbd className="rounded border border-line px-1.5 py-0.5 font-sans text-xs">⌘K</kbd>
-        </button>
-        <Sun className="size-4 text-muted" />
-        <Settings className="size-4 text-muted" />
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <div className="size-7 rounded-full bg-[#d4d4d4]" />
-          Sanjay kumar balaji
-          <ChevronDown className="size-3.5 text-muted" />
-        </div>
+        {show.search && (
+          <button className="flex items-center gap-2 text-sm text-muted hover:text-ink">
+            <Search className="size-4" />
+            Search
+            {show.shortcut && <kbd className="rounded border border-line px-1.5 py-0.5 font-sans text-xs">⌘K</kbd>}
+          </button>
+        )}
+        {show.theme && <Sun className="size-4 text-muted" />}
+        {show.settings && <Settings className="size-4 text-muted" />}
+        {user && (
+          <div className="flex items-center gap-2 text-sm font-medium">
+            {show.avatar && <div className="size-7 rounded-full bg-[#d4d4d4]" />}
+            {show.name && 'Sanjay kumar balaji'}
+            {show.menuChevron && <ChevronDown className="size-3.5 text-muted" />}
+          </div>
+        )}
       </div>
     </header>
   )
